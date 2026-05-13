@@ -1,12 +1,23 @@
+
 // import { useState, useRef, useEffect } from "react";
 // import { MessageCircle, X, Send, Sparkles } from "lucide-react";
 // import ReactMarkdown from "react-markdown";
 
+// import { db } from "@/services/firebaseConfig";
+// import { collection, getDocs } from "firebase/firestore";
 
-// type Message = { role: "user" | "assistant"; content: string };
+// type Message =
+//   | { role: "user"; content: string }
+//   | {
+//       role: "assistant";
+//       content: string;
+//       products?: any[];
+//     };
 
-// const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
-
+// //  const CHAT_URL = import.meta.env.VITE_SUPABASE_URL
+// //   ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`
+// //    : "";
+// const CHAT_URL = "http://localhost:8080/api/chat";
 // const quickQuestions = [
 //   "What's trending right now?",
 //   "Help me find a party outfit",
@@ -14,172 +25,294 @@
 //   "Styling tips for weddings",
 // ];
 
+// // 🔥 Fetch products from Firebase
+// const fetchProducts = async () => {
+//   const snap = await getDocs(collection(db, "products"));
+//   return snap.docs.map((doc) => ({
+//     id: doc.id,
+//     ...doc.data(),
+//   }));
+// };
+// const parseQuery = (query: string) => {
+//   const q = query.toLowerCase();
+
+//   // 🎯 category detection (your real categories)
+//   let category = "";
+
+//   if (q.includes("stitched")) category = "stitched";
+//   else if (q.includes("unstitched")) category = "unstitched";
+//   else if (
+//     q.includes("co ord") ||
+//     q.includes("co-ord") ||
+//     q.includes("coord")
+//   )
+//     category = "co ord set";
+
+//   // 💰 price extraction
+//   let maxPrice = Infinity;
+
+//   const priceMatch =
+//     q.match(/under\s?(\d+)/) || q.match(/below\s?(\d+)/);
+//   if (priceMatch) maxPrice = parseInt(priceMatch[1]);
+
+//   // 🧠 smart words cleanup
+//   const stopWords = [
+//     "under",
+//     "below",
+//     "for",
+//     "with",
+//     "any",
+//     "show",
+//     "me",
+//     "set",
+//   ];
+
+//   const keywords = q
+//     .split(" ")
+//     .filter((w) => !stopWords.includes(w));
+
+//   return {
+//     category,
+//     maxPrice,
+//     keywords,
+//   };
+// };
+// // 🔥 Match products with query
+// const findMatchingProducts = (query: string, products: any[]) => {
+//   const { category, maxPrice, keywords } = parseQuery(query);
+
+//   return products
+//     .filter((p) => {
+//       const name = p.name?.toLowerCase() || "";
+//       const collection = p.collection?.toLowerCase() || "";
+//       const productCategory = p.category?.toLowerCase() || "";
+//       const price = Number(p.price);
+
+//       // 🎯 category match (IMPORTANT)
+//       const categoryMatch = category
+//         ? productCategory.includes(category)
+//         : true;
+
+//       // 💰 price match
+//       const priceMatch = price <= maxPrice;
+
+//       // 🔍 keyword match
+//       const keywordMatch =
+//         keywords.length === 0 ||
+//         keywords.some(
+//           (k) =>
+//             name.includes(k) ||
+//             collection.includes(k) ||
+//             productCategory.includes(k)
+//         );
+
+//       return categoryMatch && priceMatch && keywordMatch;
+//     })
+//     .slice(0, 5);
+// };
+
 // const ChatBot = () => {
 //   const [isOpen, setIsOpen] = useState(false);
 //   const [messages, setMessages] = useState<Message[]>([]);
 //   const [input, setInput] = useState("");
 //   const [isLoading, setIsLoading] = useState(false);
+
 //   const messagesEndRef = useRef<HTMLDivElement>(null);
 //   const inputRef = useRef<HTMLInputElement>(null);
 
+//   // Auto scroll
 //   useEffect(() => {
 //     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 //   }, [messages]);
 
+//   // Auto focus
 //   useEffect(() => {
 //     if (isOpen && inputRef.current) inputRef.current.focus();
 //   }, [isOpen]);
 
-//   const sendMessage = async (text: string) => {
-//     if (!text.trim() || isLoading) return;
+//   // 🚀 AUTO OPEN after 5 sec (once per session)
+//   useEffect(() => {
+//     const hasOpened = sessionStorage.getItem("chatbot_auto_opened");
 
-//     const userMsg: Message = { role: "user", content: text.trim() };
-//     setMessages((prev) => [...prev, userMsg]);
-//     setInput("");
-//     setIsLoading(true);
+//     if (!hasOpened) {
+//       const timer = setTimeout(() => {
+//         setIsOpen(true);
+//         sessionStorage.setItem("chatbot_auto_opened", "true");
+//       }, 5000);
 
-//     let assistantSoFar = "";
-
-//     const upsertAssistant = (chunk: string) => {
-//       assistantSoFar += chunk;
-//       setMessages((prev) => {
-//         const last = prev[prev.length - 1];
-//         if (last?.role === "assistant") {
-//           return prev.map((m, i) =>
-//             i === prev.length - 1 ? { ...m, content: assistantSoFar } : m
-//           );
-//         }
-//         return [...prev, { role: "assistant", content: assistantSoFar }];
-//       });
-//     };
-
-//     try {
-//       const allMessages = [...messages, userMsg];
-//       const resp = await fetch(CHAT_URL, {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-//         },
-//         body: JSON.stringify({ messages: allMessages }),
-//       });
-
-//       if (!resp.ok || !resp.body) {
-//         const errorData = await resp.json().catch(() => ({}));
-//         throw new Error(errorData.error || "Failed to get response");
-//       }
-
-//       const reader = resp.body.getReader();
-//       const decoder = new TextDecoder();
-//       let textBuffer = "";
-
-//       while (true) {
-//         const { done, value } = await reader.read();
-//         if (done) break;
-//         textBuffer += decoder.decode(value, { stream: true });
-
-//         let newlineIndex: number;
-//         while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-//           let line = textBuffer.slice(0, newlineIndex);
-//           textBuffer = textBuffer.slice(newlineIndex + 1);
-
-//           if (line.endsWith("\r")) line = line.slice(0, -1);
-//           if (line.startsWith(":") || line.trim() === "") continue;
-//           if (!line.startsWith("data: ")) continue;
-
-//           const jsonStr = line.slice(6).trim();
-//           if (jsonStr === "[DONE]") break;
-
-//           try {
-//             const parsed = JSON.parse(jsonStr);
-//             const content = parsed.choices?.[0]?.delta?.content;
-//             if (content) upsertAssistant(content);
-//           } catch {
-//             textBuffer = line + "\n" + textBuffer;
-//             break;
-//           }
-//         }
-//       }
-//     } catch (e) {
-//       console.error("Chat error:", e);
-//       upsertAssistant("Sorry, I'm having trouble responding right now. Please try again! 💕");
-//     } finally {
-//       setIsLoading(false);
+//       return () => clearTimeout(timer);
 //     }
-//   };
+//   }, []);
+
+// const sendMessage = async (text: string) => {
+//   if (!text.trim() || isLoading) return;
+
+//   const userMsg = { role: "user", content: text.trim() };
+
+//   // 1️⃣ Add user message
+//   setMessages((prev) => [...prev, userMsg]);
+
+//   setInput("");
+//   setIsLoading(true);
+
+//   try {
+//     // 🔥 Step 1: fetch products
+//     const products = await fetchProducts();
+//     const matched = findMatchingProducts(text, products);
+
+//     // 🛍️ If products found → show instantly
+//     if (matched.length > 0) {
+//       setMessages((prev) => [
+//         ...prev,
+//         {
+//           role: "assistant",
+//           content: "Here are some products you may like 👇",
+//           products: matched,
+//         },
+//       ]);
+
+//       setIsLoading(false);
+//       return;
+//     }
+
+//     // 2️⃣ Add "Typing..." message
+//     setMessages((prev) => [
+//       ...prev,
+//       { role: "assistant", content: "Typing..." },
+//     ]);
+
+//     const allMessages = [...messages, userMsg];
+
+//     const resp = await fetch(CHAT_URL, {
+//   method: "POST",
+//   headers: {
+//     "Content-Type": "application/json",
+//   },
+//   body: JSON.stringify({ messages: allMessages }),
+// });
+
+// // 🔥 ADD THIS
+// if (!resp.ok) {
+//   const errorText = await resp.text();
+//   console.error("API ERROR:", errorText);
+//   throw new Error("API failed");
+// }
+
+// const data = await resp.json();
+
+//     // 3️⃣ Replace last message ("Typing...") with real reply
+//     setMessages((prev) => {
+//       const updated = [...prev];
+//       updated[updated.length - 1] = {
+//         role: "assistant",
+//         content: data.reply || "Sorry, I couldn't help with that.",
+//       };
+//       return updated;
+//     });
+//   } catch (err) {
+//     console.error("Chat error:", err);
+
+//     // Replace typing with error
+//     setMessages((prev) => {
+//       const updated = [...prev];
+//       updated[updated.length - 1] = {
+//         role: "assistant",
+//         content: "Something went wrong. Try again.",
+//       };
+//       return updated;
+//     });
+//   } finally {
+//     setIsLoading(false);
+//   }
+// };
+
 
 //   return (
 //     <>
-//       {/* Floating button */}
+//       {/* Floating Button */}
 //       <button
 //         onClick={() => setIsOpen(!isOpen)}
-//         className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-xl hover:scale-110 transition-all duration-300 flex items-center justify-center group"
-//         aria-label="Chat with us"
+//         className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-xl hover:scale-110 transition-all flex items-center justify-center"
 //       >
-//         {isOpen ? (
-//           <X size={22} className="transition-transform duration-300" />
-//         ) : (
-//           <MessageCircle size={22} className="transition-transform duration-300 group-hover:rotate-12" />
-//         )}
+//         {isOpen ? <X size={22} /> : <MessageCircle size={22} />}
 //       </button>
 
-//       {/* Chat window */}
+//       {/* Chat Window */}
 //       {isOpen && (
-//         <div className="fixed bottom-24 right-6 z-50 w-[360px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-8rem)] bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-up">
+//         <div
+//           className="fixed bottom-24 right-6 z-50 w-[360px] h-[520px] bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+//         >
 //           {/* Header */}
-//           <div className="bg-primary text-primary-foreground px-5 py-4 flex items-center gap-3">
-//             <div className="w-9 h-9 rounded-full bg-secondary/30 flex items-center justify-center">
-//               <Sparkles size={18} className="text-secondary" />
-//             </div>
+//           <div className="bg-primary text-white px-5 py-4 flex items-center gap-3">
+//             <Sparkles size={18} />
 //             <div>
-//               <p className="font-body text-sm font-medium tracking-wide">Ehsaas Assistant</p>
-//               <p className="font-body text-[10px] font-light tracking-wider opacity-80">
-//                 Your personal stylist ✨
-//               </p>
+//               <p className="text-sm font-medium">Ehsaas AI Stylist</p>
+//               <p className="text-[10px] opacity-80">Shopping Assistant ✨</p>
 //             </div>
 //           </div>
 
 //           {/* Messages */}
 //           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
 //             {messages.length === 0 && (
-//               <div className="text-center py-6">
-//                 <Sparkles size={28} className="mx-auto text-secondary mb-3" />
-//                 <p className="font-body text-sm font-light text-foreground mb-1">
-//                   Welcome to Ehsaas Label! 💕
-//                 </p>
-//                 <p className="font-body text-xs text-muted-foreground mb-4">
-//                   How can I help you today?
-//                 </p>
-//                 <div className="space-y-2">
-//                   {quickQuestions.map((q) => (
-//                     <button
-//                       key={q}
-//                       onClick={() => sendMessage(q)}
-//                       className="block w-full text-left px-3 py-2 rounded-lg border border-border font-body text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-secondary/20 transition-all duration-200"
-//                     >
-//                       {q}
-//                     </button>
-//                   ))}
-//                 </div>
+//               <div className="text-center text-sm text-muted-foreground">
+//                 Ask me anything about fashion 💕
 //               </div>
 //             )}
 
 //             {messages.map((msg, i) => (
 //               <div
 //                 key={i}
-//                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+//                 className={`flex ${
+//                   msg.role === "user" ? "justify-end" : "justify-start"
+//                 }`}
 //               >
 //                 <div
-//                   className={`max-w-[80%] rounded-2xl px-4 py-2.5 font-body text-sm ${
+//                   className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
 //                     msg.role === "user"
-//                       ? "bg-primary text-primary-foreground rounded-br-md"
-//                       : "bg-secondary/40 text-foreground rounded-bl-md"
+//                       ? "bg-primary text-white"
+//                       : "bg-secondary/40 text-black"
 //                   }`}
 //                 >
-//                   {msg.role === "assistant" ? (
-//                     <div className="prose prose-sm max-w-none [&_p]:mb-1 [&_p]:mt-0 [&_ul]:my-1 [&_li]:my-0">
-//                       <ReactMarkdown>{msg.content}</ReactMarkdown>
+//                   {/* TEXT */}
+//                   {msg.role === "assistant" && msg.products ? (
+//                     <div>
+//                       <p className="mb-2">{msg.content}</p>
+
+//                       {/* PRODUCTS */}
+//                       <div className="space-y-2">
+//                         {msg.products.map((p: any) => (
+//                           <div
+//                             key={p.id}
+//                             className="flex items-center gap-2 border rounded-lg p-2 bg-white"
+//                           >
+//                             <img
+//                               src={p.image || "/placeholder.jpg"}
+//                               className="w-10 h-10 rounded object-cover"
+//                             />
+
+//                             <div className="flex-1">
+//                               <p className="text-xs font-semibold">
+//                                 {p.name}
+//                               </p>
+//                               <p className="text-xs text-gray-500">
+//                                 ₹{p.price}
+//                               </p>
+//                             </div>
+
+//                             <button
+//                               onClick={() =>
+//                                 alert(`${p.name} added to cart`)
+//                               }
+//                               className="text-xs bg-black text-white px-2 py-1 rounded"
+//                             >
+//                               Add
+//                             </button>
+//                           </div>
+//                         ))}
+//                       </div>
 //                     </div>
+//                   ) : msg.role === "assistant" ? (
+//                     <ReactMarkdown>{msg.content}</ReactMarkdown>
 //                   ) : (
 //                     msg.content
 //                   )}
@@ -187,44 +320,26 @@
 //               </div>
 //             ))}
 
-//             {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
-//               <div className="flex justify-start">
-//                 <div className="bg-secondary/40 rounded-2xl rounded-bl-md px-4 py-3 flex gap-1.5">
-//                   <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:0ms]" />
-//                   <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:150ms]" />
-//                   <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:300ms]" />
-//                 </div>
-//               </div>
-//             )}
 //             <div ref={messagesEndRef} />
 //           </div>
 
 //           {/* Input */}
-//           <div className="border-t border-border px-4 py-3">
-//             <form
-//               onSubmit={(e) => {
-//                 e.preventDefault();
-//                 sendMessage(input);
-//               }}
-//               className="flex items-center gap-2"
+//           <div className="border-t p-3 flex gap-2">
+//             <input
+//               ref={inputRef}
+//               value={input}
+//               onChange={(e) => setInput(e.target.value)}
+//               placeholder="Ask about outfits..."
+//               className="flex-1 border rounded-full px-3 py-2 text-sm"
+//             />
+
+//             <button
+//               onClick={() => sendMessage(input)}
+//               disabled={!input.trim() || isLoading}
+//               className="w-9 h-9 bg-primary text-white rounded-full flex items-center justify-center"
 //             >
-//               <input
-//                 ref={inputRef}
-//                 type="text"
-//                 value={input}
-//                 onChange={(e) => setInput(e.target.value)}
-//                 placeholder="Ask me anything..."
-//                 disabled={isLoading}
-//                 className="flex-1 bg-muted/50 rounded-full px-4 py-2.5 font-body text-sm text-foreground placeholder:text-muted-foreground outline-none border border-transparent focus:border-primary/20 transition-colors"
-//               />
-//               <button
-//                 type="submit"
-//                 disabled={!input.trim() || isLoading}
-//                 className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 hover:scale-105 transition-all duration-200"
-//               >
-//                 <Send size={15} />
-//               </button>
-//             </form>
+//               <Send size={14} />
+//             </button>
 //           </div>
 //         </div>
 //       )}
@@ -248,18 +363,16 @@ type Message =
       products?: any[];
     };
 
- const CHAT_URL = import.meta.env.VITE_SUPABASE_URL
-  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`
-   : "";
-// const CHAT_URL = "/api/chat";
-const quickQuestions = [
-  "What's trending right now?",
-  "Help me find a party outfit",
-  "What's your return policy?",
-  "Styling tips for weddings",
-];
+const CHAT_URL = "http://localhost:8080/api/chat";
 
-// 🔥 Fetch products from Firebase
+// ================================
+// 💾 CACHE
+// ================================
+const responseCache: Record<string, any> = {};
+
+// ================================
+// 🔥 FETCH PRODUCTS
+// ================================
 const fetchProducts = async () => {
   const snap = await getDocs(collection(db, "products"));
   return snap.docs.map((doc) => ({
@@ -268,19 +381,9 @@ const fetchProducts = async () => {
   }));
 };
 
-// 🔥 Match products with query
-const findMatchingProducts = (query: string, products: any[]) => {
-  const q = query.toLowerCase();
-
-  return products
-    .filter(
-      (p) =>
-        p.name?.toLowerCase().includes(q) ||
-        p.collection?.toLowerCase().includes(q)
-    )
-    .slice(0, 3);
-};
-
+// ================================
+// 💬 COMPONENT
+// ================================
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -290,81 +393,88 @@ const ChatBot = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Auto focus
   useEffect(() => {
     if (isOpen && inputRef.current) inputRef.current.focus();
   }, [isOpen]);
 
-  // 🚀 AUTO OPEN after 5 sec (once per session)
-  useEffect(() => {
-    const hasOpened = sessionStorage.getItem("chatbot_auto_opened");
+  // ❌ DISABLED AUTO OPEN (causes issues)
+  // useEffect(() => {
+  //   const hasOpened = sessionStorage.getItem("chatbot_auto_opened");
+  //   if (!hasOpened) {
+  //     const timer = setTimeout(() => {
+  //       setIsOpen(true);
+  //       sessionStorage.setItem("chatbot_auto_opened", "true");
+  //     }, 5000);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, []);
 
-    if (!hasOpened) {
-      const timer = setTimeout(() => {
-        setIsOpen(true);
-        sessionStorage.setItem("chatbot_auto_opened", "true");
-      }, 5000);
-
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
+  // ================================
+  // 🚀 SEND MESSAGE
+  // ================================
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
+    const cleanText = text.trim().toLowerCase();
+
+    if (responseCache[cleanText]) {
+      setMessages((prev) => [...prev, responseCache[cleanText]]);
+      return;
+    }
+
     const userMsg = { role: "user", content: text.trim() };
     setMessages((prev) => [...prev, userMsg]);
+
     setInput("");
     setIsLoading(true);
 
     try {
-      // 🔥 Step 1: get products
       const products = await fetchProducts();
-      const matched = findMatchingProducts(text, products);
 
-      // 🛍️ If products found → show instantly
+      // simple match (keep your logic or improve later)
+      const matched = products.slice(0, 5);
+
       if (matched.length > 0) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: "Here are some products you may like 👇",
-            products: matched,
-          },
-        ]);
+        const botResponse = {
+          role: "assistant",
+          content: "Here are some products 👇",
+          products: matched,
+        };
 
-        setIsLoading(false);
+        setMessages((prev) => [...prev, botResponse]);
+        responseCache[cleanText] = botResponse;
         return;
       }
 
-      // 🤖 fallback AI response
-      const allMessages = [...messages, userMsg];
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Typing..." },
+      ]);
 
       const resp = await fetch(CHAT_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({ messages: allMessages }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: text }],
+        }),
       });
 
       const data = await resp.json();
 
-      setMessages((prev) => [
-        ...prev,
-        {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
           role: "assistant",
-          content: data.reply || "Sorry, I couldn't help with that.",
-        },
-      ]);
+          content: data.reply || "Try asking something else ✨",
+        };
+        return updated;
+      });
     } catch (err) {
-      console.error("Chat error:", err);
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -372,94 +482,56 @@ const ChatBot = () => {
 
   return (
     <>
-      {/* Floating Button */}
+      {/* ================= BUTTON ================= */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-xl hover:scale-110 transition-all flex items-center justify-center"
+        onClick={() => {
+          console.log("CHAT CLICKED"); // debug
+          setIsOpen((prev) => !prev);
+        }}
+        className="fixed bottom-6 right-6 z-[9999] w-14 h-14 rounded-full bg-black text-white shadow-xl flex items-center justify-center cursor-pointer"
       >
         {isOpen ? <X size={22} /> : <MessageCircle size={22} />}
       </button>
 
-      {/* Chat Window */}
+      {/* ================= CHAT WINDOW ================= */}
       {isOpen && (
-        <div
-          className="fixed bottom-24 right-6 z-50 w-[360px] h-[520px] bg-background border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-        >
+        <div className="fixed bottom-24 right-6 z-[9999] w-[360px] h-[520px] bg-white border rounded-2xl shadow-2xl flex flex-col">
+          
           {/* Header */}
-          <div className="bg-primary text-white px-5 py-4 flex items-center gap-3">
-            <Sparkles size={18} />
-            <div>
-              <p className="text-sm font-medium">Ehsaas AI Stylist</p>
-              <p className="text-[10px] opacity-80">Shopping Assistant ✨</p>
-            </div>
+          <div className="bg-black text-white px-5 py-4 flex items-center gap-2">
+            <Sparkles size={16} />
+            Ehsaas AI Stylist
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-4">
             {messages.length === 0 && (
-              <div className="text-center text-sm text-muted-foreground">
+              <p className="text-gray-400 text-center text-sm">
                 Ask me anything about fashion 💕
-              </div>
+              </p>
             )}
 
             {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex ${
-                  msg.role === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
-                    msg.role === "user"
-                      ? "bg-primary text-white"
-                      : "bg-secondary/40 text-black"
-                  }`}
-                >
-                  {/* TEXT */}
-                  {msg.role === "assistant" && msg.products ? (
-                    <div>
-                      <p className="mb-2">{msg.content}</p>
-
-                      {/* PRODUCTS */}
-                      <div className="space-y-2">
-                        {msg.products.map((p: any) => (
-                          <div
-                            key={p.id}
-                            className="flex items-center gap-2 border rounded-lg p-2 bg-white"
-                          >
-                            <img
-                              src={p.image || "/placeholder.jpg"}
-                              className="w-10 h-10 rounded object-cover"
-                            />
-
-                            <div className="flex-1">
-                              <p className="text-xs font-semibold">
-                                {p.name}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                ₹{p.price}
-                              </p>
-                            </div>
-
-                            <button
-                              onClick={() =>
-                                alert(`${p.name} added to cart`)
-                              }
-                              className="text-xs bg-black text-white px-2 py-1 rounded"
-                            >
-                              Add
-                            </button>
-                          </div>
-                        ))}
+              <div key={i} className="mb-3">
+                {msg.role === "assistant" && msg.products ? (
+                  <>
+                    <p>{msg.content}</p>
+                    {msg.products.map((p: any) => (
+                      <div key={p.id} className="flex gap-2 border p-2 mt-2">
+                        <img
+                          src={p.image || "/placeholder.jpg"}
+                          className="w-10 h-10"
+                        />
+                        <div>
+                          <p>{p.name}</p>
+                          <p>₹{p.price}</p>
+                        </div>
                       </div>
-                    </div>
-                  ) : msg.role === "assistant" ? (
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  ) : (
-                    msg.content
-                  )}
-                </div>
+                    ))}
+                  </>
+                ) : (
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                )}
               </div>
             ))}
 
@@ -467,21 +539,16 @@ const ChatBot = () => {
           </div>
 
           {/* Input */}
-          <div className="border-t p-3 flex gap-2">
+          <div className="p-3 flex gap-2 border-t">
             <input
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about outfits..."
-              className="flex-1 border rounded-full px-3 py-2 text-sm"
+              className="flex-1 border px-2 py-1"
             />
-
-            <button
-              onClick={() => sendMessage(input)}
-              disabled={!input.trim() || isLoading}
-              className="w-9 h-9 bg-primary text-white rounded-full flex items-center justify-center"
-            >
-              <Send size={14} />
+            <button onClick={() => sendMessage(input)}>
+              <Send size={16} />
             </button>
           </div>
         </div>

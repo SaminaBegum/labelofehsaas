@@ -382,7 +382,7 @@ const ProductCard = ({
   const productId = slug;
   const wishlisted = isWishlisted(productId);
 
-  const sizes = ["S", "M", "L", "XL"];
+  const sizes = ["S", "M", "L", "XL" , "XXL", "2XL", "3XL", "4XL", "5XL"];
 
   /* -------------------------
       ADD TO CART

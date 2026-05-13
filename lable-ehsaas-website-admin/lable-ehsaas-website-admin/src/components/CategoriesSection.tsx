@@ -157,7 +157,7 @@ const categoryRouteMap: Record<string, string> = {
         Explore
       </p>
 
-      <h2 className="text-3xl md:text-6xl font-bold italic tracking-tight bg-gradient-to-r from-black via-gray-700 to-black bg-clip-text text-transparent">
+      <h2 className="text-3xl md:text-6xl pb-2 font-bold italic tracking-tight bg-gradient-to-r from-black via-gray-700 to-black bg-clip-text text-transparent">
         Shop by Category
       </h2>
 <div className="w-24 h-px bg-secondary mx-auto mt-6 animate-fade-up" />

@@ -194,20 +194,42 @@ const variants =
     toast.success(`${product.title || product.name} added to cart!`);
   };
 
+  // const handleBuyNow = () => {
+  //   if (!selectedSize) return toast.error("Please select a size");
+
+  //   addItem({
+  //     id: productId,
+  //     name: product.title || product.name,
+  //     price: product.price,
+  //     originalPrice: product.originalPrice,
+  //     size: selectedSize,
+  //     image: product.imageUrl || product.images?.[0],
+  //   });
+
+  //   navigate("/checkout");
+  // };
   const handleBuyNow = () => {
-    if (!selectedSize) return toast.error("Please select a size");
+  if (!selectedSize) {
+    toast.error("Please select a size");
+    return;
+  }
 
-    addItem({
-      id: productId,
-      name: product.title || product.name,
-      price: product.price,
-      originalPrice: product.originalPrice,
-      size: selectedSize,
-      image: product.imageUrl || product.images?.[0],
-    });
-
-    navigate("/checkout");
-  };
+  navigate("/checkout", {
+    state: {
+      product: {
+        id: productId,
+        name: product.title || product.name,
+        price: product.price,
+        originalPrice: product.originalPrice,
+        size: selectedSize,
+        quantity,
+        image:
+          variants?.find(v => v.color === selectedColor)?.images?.[0] ||
+          variants?.[0]?.images?.[0],
+      },
+    },
+  });
+};
  // ✅ FIXED
   const handleWishlist = () => {
     toggleWishlist({

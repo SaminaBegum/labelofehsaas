@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowRight, ArrowLeft, Check, MapPin, CreditCard, Eye } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { useCart } from "@/context/CartContext";
@@ -10,6 +10,7 @@ import { addDoc, collection } from "firebase/firestore";
 import { db } from "@/services/firebaseConfig";
 import { upsertCustomer } from "@/utils/upsertCustomer";
 import { serverTimestamp } from "firebase/firestore";
+import { useNavigate, useLocation } from "react-router-dom";
 const steps = [
   { id: 1, label: "Shipping", icon: MapPin },
   { id: 2, label: "Payment", icon: CreditCard },
@@ -18,18 +19,40 @@ const steps = [
 
 const Checkout = () => {
   const navigate = useNavigate();
-  
+  const location = useLocation();
+const directProduct = location.state?.product;
   const { items, subtotal, clearCart } = useCart();
-  const { isAuthenticated, setShowAuthModal } = useAuth();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [shipping, setShipping] = useState({
-    fullName: "", phone: "", email: "", address: "", city: "", state: "", pincode: "",
-  });
-  const [deliveryOption, setDeliveryOption] = useState("standard");
-  // const [paymentMethod, setPaymentMethod] = useState("upi");
+
+
+
+ const { isAuthenticated, setShowAuthModal } = useAuth();
+
+// ✅ STATES FIRST
+const [currentStep, setCurrentStep] = useState(1);
+const [shipping, setShipping] = useState({
+  fullName: "", phone: "", email: "", address: "", city: "", state: "", pincode: "",
+});
+const [deliveryOption, setDeliveryOption] = useState("standard");
 const [paymentMethod, setPaymentMethod] = useState("cod");
-  const shippingCost = deliveryOption === "express" ? 199 : 0;
-  const total = subtotal + shippingCost;
+
+// ✅ DATA LOGIC AFTER STATE
+const finalItems = directProduct
+  ? [
+      {
+        ...directProduct,
+        quantity: directProduct.quantity || 1,
+      },
+    ]
+  : items;
+
+const calculatedSubtotal = directProduct
+  ? directProduct.price * (directProduct.quantity || 1)
+  : subtotal;
+
+const shippingCost = deliveryOption === "express" ? 199 : 0;
+const total = calculatedSubtotal + shippingCost;
+
+  
 
 
 
@@ -43,7 +66,7 @@ const saveOrderToDB = async (paymentStatus, paymentId = null) => {
     state: shipping.state,
     pincode: shipping.pincode,
 
-    products: items.map(i => ({
+    products: finalItems.map(i => ({
       id: i.id,
       name: i.name,
       size: i.size,
@@ -83,7 +106,7 @@ const handleRazorpayPayment = async () => {
     console.log("Sending amount to backend:", total);
 
     // 1️⃣ CREATE ORDER IN BACKEND
-    const res = await fetch("http://localhost:5000/api/create-order", {
+    const res = await fetch("http://label-ehsaas.com/api/create-order", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -112,7 +135,7 @@ const handleRazorpayPayment = async () => {
       handler: async function (response) {
         console.log("Razorpay Response:", response);
 
-        const verify = await fetch("http://localhost:5000/api/verify-payment", {
+        const verify = await fetch("http://label-ehsaas.com/api/verify-payment", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -202,7 +225,7 @@ const handlePlaceOrder = async () => {
 };
 
 
-  if (items.length === 0) {
+ if (!directProduct && items.length === 0) {
     return (
       <div className="page-fade-in">
         <SiteHeader />
@@ -399,7 +422,7 @@ const handlePlaceOrder = async () => {
                     <div className="border border-border p-6">
                       <h3 className="font-body text-xs font-light tracking-[0.15em] uppercase text-muted-foreground mb-4">Items</h3>
                       <div className="space-y-4">
-                        {items.map((item) => (
+                        {finalItems.map((item) => (
                           <div key={item.id} className="flex gap-4">
                             <div className="w-16 h-20 overflow-hidden bg-secondary/20 flex-shrink-0">
                               <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
@@ -441,7 +464,7 @@ const handlePlaceOrder = async () => {
             <div className="bg-secondary p-6 md:p-8 h-fit border border-border animate-fade-up">
               <h3 className="font-heading text-lg font-light italic text-foreground mb-6">Order Summary</h3>
               <div className="space-y-3 mb-6">
-                {items.map((item) => (
+                {finalItems.map((item) => (
                   <div key={item.id} className="flex gap-3">
                     <div className="w-14 h-18 overflow-hidden bg-muted flex-shrink-0">
                       <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
@@ -457,7 +480,7 @@ const handlePlaceOrder = async () => {
               <div className="space-y-3 border-t border-border pt-4">
                 <div className="flex justify-between font-body text-sm font-light">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="text-foreground">₹{subtotal.toLocaleString()}</span>
+                  <span className="text-foreground">₹{calculatedSubtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between font-body text-sm font-light">
                   <span className="text-muted-foreground">Shipping</span>

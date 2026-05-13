@@ -48,7 +48,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <AuthModal />
-              {/* <ChatBot /> */}
+            <ChatBot /> 
    
             <BrowserRouter>
             <CartDrawer />
