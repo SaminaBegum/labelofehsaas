@@ -106,7 +106,7 @@ const handleRazorpayPayment = async () => {
     console.log("Sending amount to backend:", total);
 
     // 1️⃣ CREATE ORDER IN BACKEND
-    const res = await fetch("http://label-ehsaas.com/api/create-order", {
+    const res = await fetch("http://www.label-ehsaas.com/api/create-order", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -135,7 +135,7 @@ const handleRazorpayPayment = async () => {
       handler: async function (response) {
         console.log("Razorpay Response:", response);
 
-        const verify = await fetch("http://label-ehsaas.com/api/verify-payment", {
+        const verify = await fetch("http://www.label-ehsaas.com/api/verify-payment", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
